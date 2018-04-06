@@ -1,6 +1,9 @@
 # Project configs
+REPORT := report
 SLIDES := slides
 BIBREF := references.bib
+
+TARGETS := $(REPORT) $(SLIDES)
 
 # Compiler configs
 LATEX  := xelatex
@@ -12,8 +15,9 @@ OBJS   := $(wildcard *.tex)
 # Rules
 .PHONY: clean clean-pdf slides all
 
-all: slides
+all: $(TARGETS)
 
+report: $(REPORT).pdf
 slides: $(SLIDES).pdf
 
 %.pdf: $(OBJS) $(BIBREF)
