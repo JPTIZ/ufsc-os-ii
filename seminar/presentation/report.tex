@@ -114,6 +114,85 @@ de acesso à memória ocorre da mesma forma que em SME.
 
 
 \section{Secure Encrypted Virtualization}
+Secure Encrypted Virtualization (SEV) integra o SME com a capacidade de
+comportar várias VMs criptografadas. Durante o boot a máquina host recebe uma
+chave, a qual é utilizada da mesma maneira que em SEV. O diferencial do SEV é
+que após a inicialização cada máquina virtual também ganha uma chave única,
+podendo assim criptografar seus dados e protegê-los tanto do hypervisor como de
+outros guests sendo executados no host.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/sev}
+    \label{sev}
+\end{figure}
+
+A figura \label{sev}, apesar de muito similar a \label{sme}, mostra como o
+acesso à memória se dá com a utilização sempre da chave correspondente à
+máquina que realizou a operação.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{img/sev-architecture}
+    \label{sev-architecture}
+\end{figure}
+
+\label{sev-architecture} é uma visão geral da arquitetura do SEV, nela é possível encontrar:
+
+\begin{description}
+    \item[Guest Owner]: Usuário que contratou o serviço e interage com sua VM.
+    \item[Hypervisor]: Interage com as VMs e com o Secure Processor através de
+    drivers.
+    \item[VM]: Virtual Machine sendo executada no host.
+    \item[Secure Processor]: Tem acesso exclusivo ao banco de chaves e interage
+    com o SPI flash.
+    \item[SPI Flash]: Utilizado para o gerenciamento de chaves.
+    \item[Memory Controller]: Controla os acessos à memória aplicando
+    conceitos visto acima, como por exemplo a criptografia.
+    \item[DRAM]: Memória que armazena os dados dos guests e do host.
+\end{description}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{img/asid}
+    \label{asid}
+\end{figure}
+
+Para implementar essa tecnologia também é usado o Address Space ID (ASID), que
+é usado para identificar a chave que pertence à VM. Para tirar proveito disso, o identificador
+também é utilizado para definir de quem é um dado na cache, escritas à cache
+concatenam o identificador ao dado inserido. Após uma tentativa de acessar o dado, após ser encontrado
+encontrado pela TLB, é feita uma verificação para garantir que os
+identificadores são correspondentes antes de garantir um cache hit. Isso faz
+com que não seja necessário esvaziar a TLB em caso de troca de contexto entre
+VMs, uma vez que o identificador da chave causará um miss, aumentando
+o desempenho. Esse comportamento é mostrado em \label{asid}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{img/sev-address-translation}
+    \label{sev-address-translation}
+\end{figure}
+
+Um exemplo da tradução de endereço é visto em \label{sev-address-translation}.
+Primeiramente o guest traduz o endereço para o que ele acredita ser o endereço
+físico. Após isso o host calcula o real endereço físico requisitado, deixando
+de lado o C-bit. Uma vez que o endereço físico é encontrado, o C-bit é
+novamente inserido e o dado pode ser consultado na cache.
+
+Além disso, é possível existir conflito ao decidir se uma página é criptografada
+ou não. Uma página do guest pode ter o C-bit marcado como 0, mas sua página
+física correspondente no host ter C-bit 1. Nesses caso a página seria
+criptografada com a chave do host, porém caso os dois C-bits sejam 1 o guest
+teria prioridade, logo a chave usada seria a sua.
+
+Um SVE poderia garantir proteção contra o exploit visto em 1.3.1. Uma
+tentativa de analisar o checksum com páginas criptografadas seria um desafio
+muito maior, além de que uma escrita na RAM, ao ser descriptografada pelo host,
+não faria muito sentido, já que foi criptografada por uma VM ou simplesmente
+não teve criptografia. Caso a VM ainda assim conseguisse controle do host,
+outras VMs estariam protegidas por utilizar sua própria chave.
 
 \section{Aplicação}
 
