@@ -3,6 +3,7 @@
 \newcommand{\todo}[1]{{\color{red} #1}}
 
 \title{\todo{A gente descobre depois}}
+
 \author{João Gabriel Trombeta\\
         João Paulo Taylor Ienczak Zanette\\
         Ranieri Schroeder Althoff}
@@ -18,9 +19,30 @@
 
 \chapter{Estrutura geral de IoT}
 
-\section{Componentes}
+\section{Arquitetura e Componentes}
 
-\section{Interação Cloud-Fog}
+Em uma visão de alto-nível, um ambiente IoT pode ser arquiteturalmente separado
+em dois ambientes: uma \textit{Cloud} e uma \textit{Fog}. O segundo possui foco
+na redução da latência e descentralização, sendo composto pelos nodo-sensores
+(que na prática são microcontroladores ligados a sensores, fonte de energia e
+um rádio), que extraem os dados mas, por terem recursos limitados, não lidam
+com eles diretamente.
+
+O ambiente \textit{Cloud} viria para terceirizar recursos (processamento,
+armazenamento, etc.), já que os nodos que compõem a \textit{Fog} não teria o
+suficiente deles para lidar com determinadas operações. Como exemplo, a
+\textit{Cloud} pode oferecer uma interface para as aplicações, que poderão ser
+desenvolvidas de forma mais trivial (sem ter noção da complexidade dos nodos
+sensores e outros elementos da \textit{Fog}),
+
+\section{Funcionamento geral}
+
+Para comunicação entre nodos, a tecnologia RFID (\textit{Radio Frequence
+Identification}) pode ser aplicada diretamente em tal ambiente, auxiliando na
+redução de latência e energia, em que objetos observáveis e de interesse podem
+receber \textit{tag}s reconhecidas por identificadores únicos e assim leitores
+podem fazer consultas por elementos filtrando os que possuirem uma determinada
+\textit{tag}, aproveitando a eficiência da transmissão via rádio.
 
 \chapter{Gateways IoT}
 
