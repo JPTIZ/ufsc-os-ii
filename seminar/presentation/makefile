@@ -27,6 +27,7 @@ ifdef BIBREF
 	$(LATEX) --shell-escape $(basename $@)
 	$(LATEX) --shell-escape $(basename $@)
 endif
+	$(LATEX) --shell-escape $(basename $@)
 
 clean:
 	rm -f *.{aux,bbl,blg,log,nav,snm,out,toc}
