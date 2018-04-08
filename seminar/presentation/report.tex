@@ -33,13 +33,43 @@ Monitor}), um \textbf{Hypervisor} é um componente (seja \textit{hardware},
 \textit{software} ou \textit{firmware}) responsável por criar e executar uma
 VM, sendo o \textit{Host} o computador em que o Hypervisor é executado.
 
+\section{Falhas em Hypervisors}
+
+\subsection{Xen Hypervisor}
+
+Uma falha de segurança detectada com relação a Hypervisors foi explorada no Xen
+Hypervisor (criado pelo Xen Project, composto por membros da The Linux
+Foundation), em que é possível chamar uma função arbitrária alterando a tabela
+de \textit{Hypercalls} (semelhante a uma \textit{vtable}). Uma
+\textit{Hypercall} é \textit{software trap} do Hypervisor para executar
+operações privilegiadas (como atualizar tabelas de página).
+
+Para explorar a falha, primeiramente é necessário descobrir a localização da
+tabela de \textit{Hypercalls}. Para isso, deve-se procurar pela assinatura da
+página. Porém, como a página não possui um formato tão previsível, é difícil de
+localizá-la (o que é feito pelo \textit{checksum} do conteúdo da página). Em
+compensação, a tabela de argumentos dos \textit{Hypercalls} possui um formato
+previsível, já que seu conteúdo --- que é o número de argumentos de cada
+\textit{Hypercall} --- é fixo, e portanto seu \textit{checksum} também é
+previsível. Além disso, a tabela de argumentos sempre se encontra na página
+seguinte à tabela de \textit{Hypercalls}, e portanto, ao encontrar uma, se tem
+a localização da outra. Aliado à possibilidade de leitura e escrita de código
+arbitrário, feito através de falhas nas regras de verificação de segurança de
+escrita em páginas do \textit{Hypervision}, é possível então efetuar escape de
+máquina virtual (i.e.\ acessar recursos do \textit{Host} que não pertencem à
+máquina virtual).
+
+\subsection{VMware ESXi e KVM}
+
 \chapter{AMD Memory Encryption}
 
 \section{Security Memory Encryption}
 
 \section{Secure Encrypted Virtualization}
 
-\section{Aplicação}
+\section{Aplicação do SME e SEV}
+
+\section{}
 
 \bibliographystyle{ieeetr}
 \nocite{*}
