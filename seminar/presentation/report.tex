@@ -24,9 +24,10 @@
 De maneira sucinta, máquinas virtuais (VM --- \textit{Virtual Machines}) são
 computadores sendo executados por outros computadores. Chama-se de
 \textbf{Guest} a máquina virtual em si, e de \textbf{Host} o \textit{hardware}
-que oferece recursos para executar a VM\@. No host uma cama de software chamada
-hypervisor permite a execução de múltiplas máquinas virtuais em uma única
-máquina física, independentes e cada uma executando seu próprio SO\@.
+que oferece recursos para executar a VM\@. No host, uma camada de software
+chamada hypervisor permite a execução de múltiplas máquinas virtuais
+independente sem uma única máquina física, cada uma executando seu próprio
+SO\@.
 
 \section{Hypervisor}
 
@@ -38,9 +39,9 @@ VM, sendo o \textit{Host} o computador em que o Hypervisor é executado.
 O Hypervisor é responsável pela camada de abstração entre o host e os guests,
 realizando o gerenciamento de recursos, uma vez que cada guest trabalha na
 ilusão de que todos os recursos de hardware são seus. Cada VM deve ser isolada
-para evitar que uma possa compremeter o funcionamento de outra, por isso toda
-interação com o meio físico é intermediada pelo Hypervisor, que é fortemente
-protegido das VM\@.
+para evitar que uma VM possa comprometer o funcionamento de outra, por isso
+toda interação com o meio físico é intermediada pelo Hypervisor, que é
+fortemente protegido das VM\@.
 
 \section{Falhas em Hypervisors}
 
@@ -55,8 +56,8 @@ operações privilegiadas (como atualizar tabelas de página).
 
 Para explorar a falha, primeiramente é necessário descobrir a localização da
 tabela de \textit{Hypercalls}. Para isso, deve-se procurar pela assinatura da
-página. Porém, como a página não possui um formato tão previsível, é difícil de
-localizá-la (o que é feito pelo \textit{checksum} do conteúdo da página). Em
+página (dada pelo \textit{checksum} de seu conteúdo). Porém, como essa página
+não possui um conteúdo tão previsível, é difícil de localizá-la. Em
 compensação, a tabela de argumentos dos \textit{Hypercalls} possui um formato
 previsível, já que seu conteúdo --- que é o número de argumentos de cada
 \textit{Hypercall} --- é fixo, e portanto seu \textit{checksum} também é
@@ -67,8 +68,6 @@ arbitrário, feito através de falhas nas regras de verificação de segurança 
 escrita em páginas do \textit{Hypervision}, é possível então efetuar escape de
 máquina virtual (i.e.\ acessar recursos do \textit{Host} que não pertencem à
 máquina virtual).
-
-\subsection{VMware ESXi e KVM}
 
 \chapter{AMD Memory Encryption}
 
@@ -145,9 +144,116 @@ de acesso à memória ocorre da mesma forma que em SME\@.
 
 \section{Secure Encrypted Virtualization}
 
-\section{Aplicação do SME e SEV}
+\section{Utilização do SME e SEV}
 
-\section{}
+\subsection{\textit{Set-up} e comunicação}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lll}
+        \toprule
+        Status  & Código\\
+        \midrule
+        SUCCESS & 0000h\\
+        INVALID\_PLATFORM\_STATE & 0001h\\
+        INVALID\_GUEST\_STATE & 0002h\\
+        INVALID\_CONFIG & 0003h\\
+        INVALID\_LENGTH & 0004h\\
+        ALREADY\_OWNED & 0005h\\
+        INVALID\_CERTIFICATE & 0006h\\
+        POLICY\_FAILURE & 0007h\\
+        INACTIVE & 0008h\\
+        INVALID\_ADDRESS & 0009h\\
+        BAD\_SIGNATURE & 000Ah\\
+        BAD\_MEASUREMENT & 000Bh\\
+        ASID\_OWNED & 000Ch\\
+        INVALID\_ASID & 000Dh\\
+        WBINVD\_REQUIRED & 000Eh\\
+        DFFLUSH\_REQUIRED & 0009h\\
+        INVALID\_GUEST & 0010h\\
+        INVALID\_COMMAND & 0011h\\
+        ACTIVE & 0012h\\
+        HWERROR\_PLATFORM & 0013h\\
+        HWERROR\_UNSAFE & 0014h\\
+        UNSUPPORTED & 0015h\\
+        INVALID\_PARAM & 0016h\\
+        \bottomrule
+    \end{tabular}
+    \caption{Relação dos códigos de status dados pelo AMD-SP\@. Mais detalhes
+             sobre a tabela estão
+             em~\cite{sev-api-doc}}\label{cmdresp-status-code}
+\end{table}
+
+A comunicação entre o AMD-SP e o x86 se dá por meio de registradores MMIO
+(\textit{Memory Mapped IO}), chamados de \textit{``mailbox registers''}. Um
+\textit{mailbox} essencial \textit{``Command buffer''}, que será lido/escrito
+pelo \textit{Driver} responsável pela implementação do SEV para enviar comandos
+relacionados ao SEV para o \textit{firmware}. Primeiramente é necessário, além
+de alterar o MSR, definir o endereço de memória em que ficará o \textit{Command
+Buffer}, separado em dois registradores: \texttt{CmdBufAddr\_Hi} e
+\texttt{CmdBufAddr\_Lo} (32 bits mais e menos significativos, respectivamente).
+Internamente, o registrador do \textit{Command Buffer} é chamado de
+\texttt{CmdResp}, e é utilizado da forma:
+
+\begin{enumerate}
+    \item O driver (em x86) altera o \texttt{CmdResp} com:
+        \begin{itemize}
+            \item Bit 31 em 0 (simbolizando a emissão de um comando);
+            \item Bits 30 a 26 mantidos em 0 (pois são reservados);
+            \item Bits 25 a 16 com o ID do comando a ser emitido;
+            \item Bits 15 a 1 também são mantidos em 0 (por serem reservados);
+            \item Bit 0 pode ser colocado em 1 para informar o
+                \textit{firmware} para habilitar uma interrupção no x86 ao
+                completar o comando, do contrário pode ser mantido em 0.
+        \end{itemize}
+    \item O AMD-SP executa o comando;
+    \item Após completar o comando, o AMD-SP escreve no \texttt{CmdResp} com o
+        resultado da execução do comando, da forma:
+        \begin{itemize}
+            \item Bit 31 em 1 para indicar que se trata de uma resposta;
+            \item Bits 15 a 0 com o código de status descritos na
+                tabela~\ref{cmdresp-status-code}.
+        \end{itemize}
+\end{enumerate}
+
+\subsection{Comandos}
+
+\subsubsection{INIT}
+
+O comando \texttt{INIT}, intuitivamente, inicializa a plataforma. Isso é feito
+carregando os dados de persistência relacionados ao SEV, vindos de algum
+armazenamento não-volátil, e inicializando o contexto da plataforma.
+Geralmente, os casos em que este não é o primeiro comando executado são os que
+primeiramente utilizam comandos como \texttt{PLATFORM\_STATUS} para determinar
+a versão da API\@. Requer que o estado da plataforma seja
+\texttt{PSTATE.UNINIT};
+
+\subsubsection{SHUTDOWN}
+
+Utilizado pelo dono da plataforma afim de alterar o estado dela para
+não-inicializado. A plataforma pode estar em qualquer estado e, quando
+executado, todo o estado da plataforma e dos \textit{Guests} é excluído do
+armazenamento volátil.
+
+\subsubsection{PLATFORM\_RESET}
+
+Reinicia os dados não-voláteis de SEV, sendo útil quando o dono deseja
+transferir a plataforma para um novo dono ou apenas liberar os recursos do
+sistema seguramente.
+
+\subsubsection{PLATFORM\_STATUS}
+
+Informa sobre o status atual da plataforma, incluindo versão da API
+(\textit{major} e \textit{minor}), dono (se é o próprio \textit{Host} ou é
+externo), ID da \textit{build} do \textit{firmware}, número de \textit{Guests}
+válidos mantidos pelo \textit{firmware}, e código de status do
+\textit{firmware}.
+
+\subsubsections{Outros comandos}
+
+Há outros comandos relativos às chaves, como \texttt{PEK\_GEN},
+\texttt{PEK\_CSR}, \texttt{PEK\_CERT\_IMPORT}, \texttt{PDH\_GEN} e
+\texttt{PDH\_CERT\_EXPORT}, que permitem gerar, trocar e validar chaves.
 
 \bibliographystyle{ieeetr}
 \nocite{*}
