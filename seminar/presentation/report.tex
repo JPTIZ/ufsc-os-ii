@@ -81,9 +81,9 @@ máquina virtual.
 \chapter{AMD Memory Encryption}
 
 A AMD possui dois mecanismos de encriptação de memória com a finalidade de
-tornar mais seguro o uso de máquinas virtuais, são o Secure Memory Encryption e
-Secure Encrypted Virtualization (SVE). Para realizar tal função, ambos utilizam
-o AMD Secure Processor.
+tornar mais seguro o uso de máquinas virtuais, são o Secure Memory Encryption
+(SME) e Secure Encrypted Virtualization (SEV). Para realizar tal função, ambos
+utilizam o AMD Secure Processor.
 
 \section{AMD Secure Processor}
 
@@ -173,8 +173,8 @@ outros guests sendo executados no host.
     \caption{Demonstração do acesso à memória através de chaves.}\label{sev}
 \end{figure}
 
-A figura~\ref{sev}, apesar de muito similar a~\ref{sme}, mostra como o acesso à
-memória se dá com a utilização sempre da chave correspondente à máquina que
+A figura~\ref{sev}, apesar de muito similar a~\ref{sme-1}, mostra como o acesso
+à memória se dá com a utilização sempre da chave correspondente à máquina que
 realizou a operação.
 
 
@@ -206,16 +206,15 @@ SEV, nela é possível encontrar:
     \caption{Comportamento da TLB mediante ASID\@.}\label{asid}
 \end{figure}
 
-Para implementar essa tecnologia também é usado o Address Space ID (ASID), que
-é usado para identificar a chave que pertence à VM\@. Para tirar proveito
-disso, o identificador também é utilizado para definir de quem é um dado na
-cache, escritas à cache concatenam o identificador ao dado inserido. Após uma
-tentativa de acessar o dado, após ser encontrado encontrado pela TLB, é feita
-uma verificação para garantir que os identificadores são correspondentes antes
-de garantir um cache hit. Isso faz com que não seja necessário esvaziar a TLB
-em caso de troca de contexto entre VMs, uma vez que o identificador da chave
-causará um miss, aumentando o desempenho. Esse comportamento é mostrado
-em~\ref{asid}.
+Para implementar essa tecnologia também é usado o Address Space ID (ASID) para
+identificar a chave que pertence à VM\@. Para tirar proveito disso, o
+identificador também é utilizado para definir de quem é um dado na TLB, assim a
+ASID também é usado como uma \textit{tag} na TLB\@. Após uma tentativa de
+acessar o dado, depois de ser encontrado pela TLB, é feita uma verificação para
+garantir que os identificadores são correspondentes antes de garantir um TLB
+hit. Isso faz com que não seja necessário esvaziar a TLB em caso de troca de
+contexto entre VMs, uma vez que as \textit{tags} não irão colidir com uma mesma
+região da TLB\@. Esse comportamento é demonstrado em~\ref{asid}.
 
 \begin{figure}[h]
     \centering
@@ -227,7 +226,7 @@ Um exemplo da tradução de endereço é visto em~\ref{sev-address-translation}.
 Primeiramente o guest traduz o endereço para o que ele acredita ser o endereço
 físico. Após isso o host calcula o real endereço físico requisitado, deixando
 de lado o C-bit. Uma vez que o endereço físico é encontrado, o C-bit é
-novamente inserido e o dado pode ser consultado na cache.
+novamente inserido e o dado pode ser consultado na memória.
 
 Além disso, é possível existir conflito ao decidir se uma página é
 criptografada ou não. Uma página do guest pode ter o C-bit marcado como 0, mas
@@ -235,12 +234,14 @@ sua página física correspondente no host ter C-bit 1. Nesses caso a página
 seria criptografada com a chave do host, porém caso os dois C-bits sejam 1 o
 guest teria prioridade, logo a chave usada seria a sua.
 
-O SVE poderia garantir proteção contra o exploit visto em 1.3.1. Uma tentativa
+\todo{Avançar nessa cavala imunda.}
+
+O SEV poderia garantir proteção contra o exploit visto em 1.3.1. Uma tentativa
 de analisar o checksum com páginas criptografadas seria um desafio muito maior,
 além de que uma escrita na RAM, ao ser descriptografada pelo host, não faria
 muito sentido, já que foi criptografada por uma VM ou simplesmente não teve
 criptografia. Caso a VM ainda assim conseguisse controle do host, outras VMs
-estariam protegidas por utilizar sua própria chave. No geral o SVE consegue
+estariam protegidas por utilizar sua própria chave. No geral o SEV consegue
 lidar tanto com ataques físicos quanto ataques de usuário, como o host injetar
 código nos guests ou algum guest tomar controle do host.
 
@@ -248,52 +249,18 @@ código nos guests ou algum guest tomar controle do host.
 
 \subsection{\textit{Set-up} e comunicação}
 
-\begin{table}[h]
-    \centering
-    \begin{tabular}{lll}
-        \toprule
-        Status  & Código\\
-        \midrule
-        SUCCESS & 0000h\\
-        INVALID\_PLATFORM\_STATE & 0001h\\
-        INVALID\_GUEST\_STATE & 0002h\\
-        INVALID\_CONFIG & 0003h\\
-        INVALID\_LENGTH & 0004h\\
-        ALREADY\_OWNED & 0005h\\
-        INVALID\_CERTIFICATE & 0006h\\
-        POLICY\_FAILURE & 0007h\\
-        INACTIVE & 0008h\\
-        INVALID\_ADDRESS & 0009h\\
-        BAD\_SIGNATURE & 000Ah\\
-        BAD\_MEASUREMENT & 000Bh\\
-        ASID\_OWNED & 000Ch\\
-        INVALID\_ASID & 000Dh\\
-        WBINVD\_REQUIRED & 000Eh\\
-        DFFLUSH\_REQUIRED & 0009h\\
-        INVALID\_GUEST & 0010h\\
-        INVALID\_COMMAND & 0011h\\
-        ACTIVE & 0012h\\
-        HWERROR\_PLATFORM & 0013h\\
-        HWERROR\_UNSAFE & 0014h\\
-        UNSUPPORTED & 0015h\\
-        INVALID\_PARAM & 0016h\\
-        \bottomrule
-    \end{tabular}
-    \caption{Relação dos códigos de status dados pelo AMD-SP\@. Mais detalhes
-             sobre a tabela estão
-             em~\cite{sev-api-doc}}\label{cmdresp-status-code}
-\end{table}
+\input{status-table}
 
 A comunicação entre o AMD-SP e o x86 se dá por meio de registradores MMIO
 (\textit{Memory Mapped IO}), chamados de \textit{``mailbox registers''}. Um
-\textit{mailbox} essencial \textit{``Command buffer''}, que será lido/escrito
-pelo \textit{Driver} responsável pela implementação do SEV para enviar comandos
-relacionados ao SEV para o \textit{firmware}. Primeiramente é necessário, além
-de alterar o MSR, definir o endereço de memória em que ficará o \textit{Command
-Buffer}, separado em dois registradores: \texttt{CmdBufAddr\_Hi} e
-\texttt{CmdBufAddr\_Lo} (32 bits mais e menos significativos, respectivamente).
-Internamente, o registrador do \textit{Command Buffer} é chamado de
-\texttt{CmdResp}, e é utilizado da forma:
+\textit{mailbox} essencial é o \textit{``Command buffer''}, que será
+lido/escrito pelo \textit{Driver} responsável pela implementação do SEV para
+enviar comandos relacionados ao SEV para o \textit{firmware}. Primeiramente é
+necessário, além de alterar o MSR, definir o endereço de memória em que ficará
+o \textit{Command Buffer}, separado em dois registradores:
+\texttt{CmdBufAddr\_Hi} e \texttt{CmdBufAddr\_Lo} (32 bits mais e menos
+significativos, respectivamente).  Internamente, o registrador do
+\textit{Command Buffer} é chamado de \texttt{CmdResp}, e é utilizado da forma:
 
 \begin{enumerate}
     \item O driver (em x86) altera o \texttt{CmdResp} com:
@@ -357,10 +324,10 @@ Há outros comandos relativos às chaves, como \texttt{PEK\_GEN},
 
 \section{Possíveis falhas}
 
-Apesar das seguranças em criptografia os dois sitemas ainda podem ser
+Apesar das seguranças em criptografia os dois sistemas ainda podem ser
 vulneráveis a ataques. Nada impede um Hypervisor comprometido de modificar
 trechos de um guest, mesmo que por textos sem sentido, ou até mesmo reescrever
-dados em um local da memória com trechos trechos mais antigos do mesmo local.
+dados em um local da memória com trechos mais antigos do mesmo local.
 
 Outra técnica de ataque que pode ser utilizada pelo Hypervisor é trocar os
 dados de dois endereços de uma virtual machine. Dessa forma a VM ainda

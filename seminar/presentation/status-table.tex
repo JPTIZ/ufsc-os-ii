@@ -1,0 +1,36 @@
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lll}
+        \toprule
+        Status  & Código\\
+        \midrule
+        SUCCESS & 0000h\\
+        INVALID\_PLATFORM\_STATE & 0001h\\
+        INVALID\_GUEST\_STATE & 0002h\\
+        INVALID\_CONFIG & 0003h\\
+        INVALID\_LENGTH & 0004h\\
+        ALREADY\_OWNED & 0005h\\
+        INVALID\_CERTIFICATE & 0006h\\
+        POLICY\_FAILURE & 0007h\\
+        INACTIVE & 0008h\\
+        INVALID\_ADDRESS & 0009h\\
+        BAD\_SIGNATURE & 000Ah\\
+        BAD\_MEASUREMENT & 000Bh\\
+        ASID\_OWNED & 000Ch\\
+        INVALID\_ASID & 000Dh\\
+        WBINVD\_REQUIRED & 000Eh\\
+        DFFLUSH\_REQUIRED & 0009h\\
+        INVALID\_GUEST & 0010h\\
+        INVALID\_COMMAND & 0011h\\
+        ACTIVE & 0012h\\
+        HWERROR\_PLATFORM & 0013h\\
+        HWERROR\_UNSAFE & 0014h\\
+        UNSUPPORTED & 0015h\\
+        INVALID\_PARAM & 0016h\\
+        \bottomrule
+    \end{tabular}
+    \caption{Relação dos códigos de status dados pelo AMD-SP\@. Mais detalhes
+             sobre a tabela estão
+             em~\cite{sev-api-doc}}\label{cmdresp-status-code}
+\end{table}
+
