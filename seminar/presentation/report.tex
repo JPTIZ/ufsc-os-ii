@@ -72,6 +72,11 @@ máquina virtual).
 
 \chapter{AMD Memory Encryption}
 
+A AMD possui dois mecanismos de encriptação de memória com a finalidade de
+tornar mais seguro o uso de máquinas virtuais, são o Secure Memory Encryption e
+Secure Encrypted Virtualization (SVE). Para realizar tal função, ambos utilizam
+o AMD Secure Processor.
+
 \section{AMD Secure Processor}
 
 Grande parte das funções de criptografia executadas em um AMD utilizam um
@@ -108,8 +113,8 @@ descriptografados.
 
 Esse tipo de segurança não previne ataques advindos de um Hypervisor
 comprometido, uma vez que ele possui acesso aos dados de maneira direta, esse
-tipo de segurança tem com o objetivo evitar ataques como \todo{probe attack na
-DRAM}, instalação de hardware que possa acessar a memória do guest, ataques que
+tipo de segurança tem com o objetivo evitar ataques como probe attack na
+DRAM, instalação de hardware que possa acessar a memória do guest, ataques que
 possam capturar dados de DIMM e NVDIMM\@.
 
 Para utilizar SME, é necessário verificar se o processador possui suporte para
@@ -205,7 +210,7 @@ o desempenho. Esse comportamento é mostrado em ~\ref{asid}.
     \label{sev-address-translation}
 \end{figure}
 
-Um exemplo da tradução de endereço é visto em ~\ref{sev-address-translation}.
+Um exemplo da tradução de endereço é visto em~\ref{sev-address-translation}.
 Primeiramente o guest traduz o endereço para o que ele acredita ser o endereço
 físico. Após isso o host calcula o real endereço físico requisitado, deixando
 de lado o C-bit. Uma vez que o endereço físico é encontrado, o C-bit é
@@ -217,16 +222,30 @@ física correspondente no host ter C-bit 1. Nesses caso a página seria
 criptografada com a chave do host, porém caso os dois C-bits sejam 1 o guest
 teria prioridade, logo a chave usada seria a sua.
 
-Um SVE poderia garantir proteção contra o exploit visto em 1.3.1. Uma
+O SVE poderia garantir proteção contra o exploit visto em 1.3.1. Uma
 tentativa de analisar o checksum com páginas criptografadas seria um desafio
 muito maior, além de que uma escrita na RAM, ao ser descriptografada pelo host,
 não faria muito sentido, já que foi criptografada por uma VM ou simplesmente
 não teve criptografia. Caso a VM ainda assim conseguisse controle do host,
-outras VMs estariam protegidas por utilizar sua própria chave.
+outras VMs estariam protegidas por utilizar sua própria chave. No geral o SVE
+consegue lidar tanto com ataques físicos quanto ataques de usuário, como o host
+injetar código nos guests ou algum guest tomar controle do host.
 
 \section{Aplicação do SME e SEV}
 
-\section{}
+\section{Possíveis falhas}
+
+Apesar das seguranças em criptografia os dois sitemas ainda podem ser
+vulneráveis a ataques. Nada impede um Hypervisor comprometido de modificar
+trechos de um guest, mesmo que por textos sem sentido, ou até mesmo reescrever
+dados em um local da memória com trechos trechos mais antigos do mesmo local.
+
+Outra técnica de ataque que pode ser utilizada pelo Hypervisor é trocar os
+dados de dois endereços de uma virtual machine. Dessa forma a VM ainda
+conseguiria descriptografar a página porém resultaria em um comportamento
+inesperado.
+
+
 
 \bibliographystyle{ieeetr}
 \nocite{*}
