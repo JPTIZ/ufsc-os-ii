@@ -19,54 +19,64 @@
 
 \chapter{Máquinas Virtuais}
 
-\section{Sobre Máquinas Virtuais}
-
-De maneira sucinta, máquinas virtuais (VM --- \textit{Virtual Machines}) são
-computadores sendo executados por outros computadores. Chama-se de
-\textbf{Guest} a máquina virtual em si, e de \textbf{Host} o \textit{hardware}
-que oferece recursos para executar a VM\@. No host uma cama de software chamada
-hypervisor permite a execução de múltiplas máquinas virtuais em uma única
-máquina física, independentes e cada uma executando seu próprio SO\@.
+Máquinas virtuais (VM, na sigla em inglês para \textit{Virtual Machines}) são
+emuladores de computadores lógicos, implementando arquiteturas e conjuntos de
+instruções para prover a funcionalidade de um computador físico. Chama-se de
+\textit{guest} ou convidado o computador executado pela máquina virtual, e de
+\textit{host} ou hospedeiro o computador cujo \textit{hardware} oferece
+recursos para executar a máquina virtual. No \textit{host}, uma camada de
+software chamada hypervisor permite a execução máquinas virtuais em uma máquina
+física, independentes entre si e executando sistemas operacionais semelhantes
+ou não.
 
 \section{Hypervisor}
 
-Também chamado de Monitor de Máquina Virtual (VMM --- \textit{Virtual Machine
-Monitor}), um \textbf{Hypervisor} é um componente (seja \textit{hardware},
-\textit{software} ou \textit{firmware}) responsável por criar e executar uma
-VM, sendo o \textit{Host} o computador em que o Hypervisor é executado.
+Também chamado de monitor de máquina virtual (VMM, na sigla em inglês para
+\textit{Virtual Machine Monitor}), um \textit{hypervisor} é um componente em
+forma de \textit{hardware}, \textit{software} ou \textit{firmware}, responsável
+por criar e executar uma máquina virtual. \textit{Hypervisors} podem ser do
+tipo nativo (ou \textit{bare metal}), quando executa suas máquinas virtuais
+diretamente no \textit{hardware} do \textit{host}, ou \textit{hosted}, quando
+executa \textit{software} sobre o sistema operacional do \textit{host}, sendo
+gerenciado pelo \textit{kernel} do mesmo.
 
-O Hypervisor é responsável pela camada de abstração entre o host e os guests,
-realizando o gerenciamento de recursos, uma vez que cada guest trabalha na
-ilusão de que todos os recursos de hardware são seus. Cada VM deve ser isolada
-para evitar que uma possa compremeter o funcionamento de outra, por isso toda
-interação com o meio físico é intermediada pelo Hypervisor, que é fortemente
-protegido das VM\@.
+O \textit{hypervisor} é responsável pela camada de abstração entre o
+\textit{host} e os \textit{guests}, realizando o gerenciamento de recursos,
+pois um \textit{guest} individualmente é isolado de forma que todos os recursos
+de \textit{hardware} visíveis são considerados seus. Cada máquina virtual deve
+ser gerenciada de forma a evitar que comprometa o funcionamento das outras, por
+isso toda interação com o meio físico é intermediada pelo \textit{hypervisor},
+que é fortemente protegido das máquinas virtuais por ele gerenciadas.
 
 \section{Falhas em Hypervisors}
 
 \subsection{Xen Hypervisor}
 
-Uma falha de segurança detectada com relação a Hypervisors foi explorada no Xen
-Hypervisor (criado pelo Xen Project, composto por membros da The Linux
-Foundation), em que é possível chamar uma função arbitrária alterando a tabela
-de \textit{Hypercalls} (semelhante a uma \textit{vtable}). Uma
-\textit{Hypercall} é \textit{software trap} do Hypervisor para executar
-operações privilegiadas (como atualizar tabelas de página).
+Uma falha de segurança detectada com relação a \textit{hypervisors} foi
+explorada no \textbf{Xen Hypervisor}, um dos \textit{hypervisors} mais
+populares da atualidade, em que é possível executar uma função arbitrária
+alterando a tabela de \textit{hypercalls}, algo semelhante a uma
+\textit{vtable} no contexto de \textit{hypervisors}. Uma \textit{hypercall} é
+uma \textit{software trap} (uma interrupção) do \textit{hypervisor} para
+executar operações privilegiadas, como atualizar tabelas de página das máquinas
+virtuais.
 
 Para explorar a falha, primeiramente é necessário descobrir a localização da
-tabela de \textit{Hypercalls}. Para isso, deve-se procurar pela assinatura da
-página. Porém, como a página não possui um formato tão previsível, é difícil de
-localizá-la (o que é feito pelo \textit{checksum} do conteúdo da página). Em
-compensação, a tabela de argumentos dos \textit{Hypercalls} possui um formato
-previsível, já que seu conteúdo --- que é o número de argumentos de cada
-\textit{Hypercall} --- é fixo, e portanto seu \textit{checksum} também é
-previsível. Além disso, a tabela de argumentos sempre se encontra na página
-seguinte à tabela de \textit{Hypercalls}, e portanto, ao encontrar uma, se tem
-a localização da outra. Aliado à possibilidade de leitura e escrita de código
-arbitrário, feito através de falhas nas regras de verificação de segurança de
-escrita em páginas do \textit{Hypervision}, é possível então efetuar escape de
-máquina virtual (i.e.\ acessar recursos do \textit{Host} que não pertencem à
-máquina virtual).
+tabela de \textit{hypercalls} procurando pela assinatura da página. Como a
+página não possui um formato tão previsível, é difícil de localizá-la, o que é
+feito pelo \textit{checksum} do conteúdo da página, mas a tabela de argumentos
+dos \textit{hypercalls} possui um formato previsível, já que seu conteúdo, que
+é o número de argumentos de cada \textit{hypercall}, é fixo, portanto seu
+\textit{checksum} também é previsível. Além disso, a tabela de argumentos
+sempre se encontra na página seguinte à tabela de \textit{hypercalls}, o que
+implica que basta encontrar uma das tabelas para que se tenha a localização da
+outra.
+
+Aliado à possibilidade de leitura e escrita de código arbitrário, feito através
+de falhas nas regras de verificação de segurança de escrita em páginas do
+\textit{hypervisor}, é possível então efetuar escape de máquina virtual, por
+exemplo, acessando recursos do \textit{host} que não estão alocados para
+máquina virtual.
 
 \subsection{VMware ESXi e KVM}
 
@@ -74,26 +84,28 @@ máquina virtual).
 
 \section{AMD Secure Processor}
 
-Grande parte das funções de criptografia executadas em um AMD utilizam um
-processador dedicado e independente, o AMD Secure Processor (AMD-SP,
-antigamente chamado de Platform Security Processor), que garante que
-componentes sensíveis à segurança não recebam interferência do software dos
-processadores principais.
+Grande parte das funções de criptografia executadas em um processador AMD
+utilizam um processador dedicado e independente, o \textbf{AMD Secure
+Processor} (AMD-SP, chamado anteriormente de \textbf{Platform Security
+Processor}), que garante que componentes sensíveis à segurança não recebam
+interferência do \textit{software} sendo executado nos processadores
+principais.
 
-O AMD-SP roda um kernel seguro de código fechado, que pode executar tarefas do
-sistema assim como tarefas de terceiros confiáveis, tendo o administrador
-controle sobre quais tarefas de terceiros são designadas ao processador. Além
-disso, o Secure Processor possui uma SRAM dedicada e acesso direto ao CCP, que
-é composto por um gerador de números aleatórios, várias engines para o
-processamento de algoritmos de criptografia, e um bloco para o armazenamento de
-chaves.
+O AMD-SP roda um \textit{kernel} seguro de código fechado, que pode executar
+tarefas do sistema assim como tarefas de terceiros confiáveis, tendo o
+administrador controle sobre quais tarefas de terceiros são designadas ao
+processador. Além disso, possui uma memória dedicada e acesso direto ao
+coprocessador criptográfico (CCP), que é composto por um gerador de números
+aleatórios, várias engines para o processamento de algoritmos de criptografia,
+e um bloco para o armazenamento de chaves.
 
 \section{Security Memory Encryption}
-O AMD Secure Memory Encryption (SME) é um mecanismo que pode ser utilizado para
-criptografar os dados que vão para a DRAM, com a finalidade de evitar ataques
-físicos. Durante o boot, o AMD Secure Processor gera uma chave que será usada
-para criptografar e descriptografar os dados que transitam pela DRAM\@. Como o
-a engine de criptografia está dentro do chip o impacto das operações é pequeno.
+O \textbf{AMD Secure Memory Encryption} (SME) é um mecanismo que pode ser
+utilizado para criptografar os dados que são escritos na RAM, com a finalidade
+de evitar ataques físicos. Durante o boot, o AMD-SP gera uma chave simétrica
+que será usada para criptografar e descriptografar os dados que transitam pela
+DRAM. Como a \textit{engine} de criptografia está dentro do chip, o impacto das
+operações é pequeno.
 
 \begin{figure}[h]
     \centering
@@ -121,7 +133,7 @@ que define se o dado deve ou não ser criptografado.
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.5\textwidth]{img/sme_read_write_architecture}
+    \includegraphics[width=0.5\textwidth]{img/sme_read_write_architecture.png}
     \caption{Leitura e escrita no SME}\label{sme-read-write}
 \end{figure}
 
