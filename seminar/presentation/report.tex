@@ -22,9 +22,9 @@
 Máquinas virtuais (VM, na sigla em inglês para \textit{Virtual Machines}) são
 emuladores de computadores lógicos, implementando arquiteturas e conjuntos de
 instruções para prover a funcionalidade de um computador físico. Chama-se de
-\textit{guest} ou convidado o computador executado pela máquina virtual, e de
-\textit{host} ou hospedeiro o computador cujo \textit{hardware} oferece
-recursos para executar a máquina virtual. No \textit{host}, uma camada de
+\textit{Guest} ou convidado o computador executado pela máquina virtual, e de
+\textit{Host} ou hospedeiro o computador cujo \textit{hardware} oferece
+recursos para executar a máquina virtual. No \textit{Host}, uma camada de
 software chamada hypervisor permite a execução máquinas virtuais em uma máquina
 física, independentes entre si e executando sistemas operacionais semelhantes
 ou não.
@@ -36,13 +36,13 @@ Também chamado de monitor de máquina virtual (VMM, na sigla em inglês para
 forma de \textit{hardware}, \textit{software} ou \textit{firmware}, responsável
 por criar e executar uma máquina virtual. \textit{Hypervisors} podem ser do
 tipo nativo (ou \textit{bare metal}), quando executa suas máquinas virtuais
-diretamente no \textit{hardware} do \textit{host}, ou \textit{hosted}, quando
-executa \textit{software} sobre o sistema operacional do \textit{host}, sendo
+diretamente no \textit{hardware} do \textit{Host}, ou \textit{Hosted}, quando
+executa \textit{software} sobre o sistema operacional do \textit{Host}, sendo
 gerenciado pelo \textit{kernel} do mesmo.
 
 O \textit{hypervisor} é responsável pela camada de abstração entre o
-\textit{host} e os \textit{guests}, realizando o gerenciamento de recursos,
-pois um \textit{guest} individualmente é isolado de forma que todos os recursos
+\textit{Host} e os \textit{Guests}, realizando o gerenciamento de recursos,
+pois um \textit{Guest} individualmente é isolado de forma que todos os recursos
 de \textit{hardware} visíveis são considerados seus. Cada máquina virtual deve
 ser gerenciada de forma a evitar que comprometa o funcionamento das outras, por
 isso toda interação com o meio físico é intermediada pelo \textit{hypervisor},
@@ -75,7 +75,7 @@ outra.
 Aliado à possibilidade de leitura e escrita de código arbitrário, feito através
 de falhas nas regras de verificação de segurança de escrita em páginas do
 \textit{hypervisor}, é possível então efetuar escape de máquina virtual, por
-exemplo, acessando recursos do \textit{host} que não estão alocados para
+exemplo, acessando recursos do \textit{Host} que não estão alocados para
 máquina virtual.
 
 \chapter{AMD Memory Encryption}
@@ -103,6 +103,7 @@ aleatórios, várias engines para o processamento de algoritmos de criptografia,
 e um bloco para o armazenamento de chaves.
 
 \section{Security Memory Encryption}
+
 O \textbf{AMD Secure Memory Encryption} (SME) é um mecanismo que pode ser
 utilizado para criptografar os dados que são escritos na RAM, com a finalidade
 de evitar ataques físicos. Durante o boot, o AMD-SP gera uma chave simétrica
@@ -123,9 +124,9 @@ descriptografados.
 
 Esse tipo de segurança não previne ataques advindos de um Hypervisor
 comprometido, uma vez que ele possui acesso aos dados de maneira direta, esse
-tipo de segurança tem com o objetivo evitar ataques como probe attack na
-DRAM, instalação de hardware que possa acessar a memória do guest, ataques que
-possam capturar dados de DIMM e NVDIMM\@.
+tipo de segurança tem com o objetivo evitar ataques como probe attack na DRAM,
+instalação de hardware que possa acessar a memória do \textit{Guest}, ataques
+que possam capturar dados de DIMM e NVDIMM\@.
 
 Para utilizar SME, é necessário verificar se o processador possui suporte para
 esse recurso, o que pode ser verificado através da chamada de CPUID
@@ -161,11 +162,11 @@ de acesso à memória ocorre da mesma forma que em SME\@.
 \section{Secure Encrypted Virtualization}
 
 Secure Encrypted Virtualization (SEV) integra o SME com a capacidade de
-comportar várias VMs criptografadas. Durante o boot a máquina host recebe uma
+comportar várias VMs criptografadas. Durante o boot a máquina \textit{Host} recebe uma
 chave, a qual é utilizada da mesma maneira que em SEV\@. O diferencial do SEV é
 que após a inicialização cada máquina virtual também ganha uma chave única,
 podendo assim criptografar seus dados e protegê-los tanto do hypervisor como de
-outros guests sendo executados no host.
+outros \textit{Guest}s sendo executados no \textit{Host}.
 
 \begin{figure}[h]
     \centering
@@ -191,13 +192,13 @@ SEV, nela é possível encontrar:
     \item[Guest Owner]: Usuário que contratou o serviço e interage com sua VM\@.
     \item[Hypervisor]: Interage com as VMs e com o Secure Processor através de
     drivers.
-    \item[VM]: Virtual Machine sendo executada no host.
+    \item[VM]: Virtual Machine sendo executada no \textit{Host}.
     \item[Secure Processor]: Tem acesso exclusivo ao banco de chaves e interage
     com o SPI flash.
     \item[SPI Flash]: Utilizado para o gerenciamento de chaves.
     \item[Memory Controller]: Controla os acessos à memória aplicando
     conceitos visto acima, como por exemplo a criptografia.
-    \item[DRAM]: Memória que armazena os dados dos guests e do host.
+    \item[DRAM]: Memória que armazena os dados dos \textit{Guest}s e do \textit{Host}.
 \end{description}
 
 \begin{figure}[h]
@@ -223,27 +224,30 @@ região da TLB\@. Esse comportamento é demonstrado em~\ref{asid}.
 \end{figure}
 
 Um exemplo da tradução de endereço é visto em~\ref{sev-address-translation}.
-Primeiramente o guest traduz o endereço para o que ele acredita ser o endereço
-físico. Após isso o host calcula o real endereço físico requisitado, deixando
-de lado o C-bit. Uma vez que o endereço físico é encontrado, o C-bit é
-novamente inserido e o dado pode ser consultado na memória.
+Primeiramente o \textit{Guest} traduz o endereço para o que ele acredita ser o
+endereço físico. Após isso o \textit{Host} calcula o real endereço físico
+requisitado, deixando de lado o C-bit. Uma vez que o endereço físico é
+encontrado, o C-bit é novamente inserido e o dado pode ser consultado na
+memória.
 
 Além disso, é possível existir conflito ao decidir se uma página é
-criptografada ou não. Uma página do guest pode ter o C-bit marcado como 0, mas
-sua página física correspondente no host ter C-bit 1. Nesses caso a página
-seria criptografada com a chave do host, porém caso os dois C-bits sejam 1 o
-guest teria prioridade, logo a chave usada seria a sua.
-
-\todo{Avançar nessa cavala imunda.}
+criptografada ou não. Uma página do \textit{Guest} pode ter o C-bit marcado
+como 0, mas sua página física correspondente no \textit{Host} ter C-bit 1.
+Nesses caso a página seria criptografada com a chave do \textit{Host}, porém
+caso os dois C-bits sejam 1 o \textit{Guest} teria prioridade, logo a chave
+usada seria a sua.
 
 O SEV poderia garantir proteção contra o exploit visto em 1.3.1. Uma tentativa
-de analisar o checksum com páginas criptografadas seria um desafio muito maior,
-além de que uma escrita na RAM, ao ser descriptografada pelo host, não faria
-muito sentido, já que foi criptografada por uma VM ou simplesmente não teve
-criptografia. Caso a VM ainda assim conseguisse controle do host, outras VMs
-estariam protegidas por utilizar sua própria chave. No geral o SEV consegue
-lidar tanto com ataques físicos quanto ataques de usuário, como o host injetar
-código nos guests ou algum guest tomar controle do host.
+de analisar o \textit{checksum} com páginas criptografadas seria um desafio
+muito maior, já que o passo base do \textit{exploit} consiste no \textit{Guest}
+varrer dados do \textit{Host}. Com a criptografia de memória, o \textit{Guest}
+acabará descriptografando os dados do \textit{Host} usando a própria chave,
+obtendo respostas diferentes do esperado e portanto não conseguindo identificar
+a tabela de argumentos de \textit{Hypercall}. Caso a VM ainda assim conseguisse
+controle do \textit{Host}, outras VMs estariam protegidas por utilizar sua
+própria chave. No geral o SEV consegue lidar tanto com ataques físicos quanto
+ataques de usuário, como o \textit{Host} injetar código nos \textit{Guest}s ou
+algum \textit{Guest} tomar controle do \textit{Host}.
 
 \section{Utilização do SME e SEV}
 
@@ -326,8 +330,9 @@ Há outros comandos relativos às chaves, como \texttt{PEK\_GEN},
 
 Apesar das seguranças em criptografia os dois sistemas ainda podem ser
 vulneráveis a ataques. Nada impede um Hypervisor comprometido de modificar
-trechos de um guest, mesmo que por textos sem sentido, ou até mesmo reescrever
-dados em um local da memória com trechos mais antigos do mesmo local.
+trechos de um \textit{Guest}, mesmo que por textos sem sentido, ou até mesmo
+reescrever dados em um local da memória com trechos mais antigos do mesmo
+local.
 
 Outra técnica de ataque que pode ser utilizada pelo Hypervisor é trocar os
 dados de dois endereços de uma virtual machine. Dessa forma a VM ainda
