@@ -117,23 +117,25 @@ das operações é pequeno.
     \caption{Método de criptografia do SME}\label{sme-1}
 \end{figure}
 
-A figura~\ref{sme-1} mostra como ocorre a criptografia. A engine é posicionada
-entre o OS/Hypervisor, onde dada a chave o dado é criptografado antes de ser
-salvo na DRAM\@. Ao passar da DRAM para o SO novamente, os dados são
-descriptografados.
+A figura~\ref{sme-1} mostra como ocorre a criptografia. A \textit{engine} é
+localizada entre o sistema operacional ou \textit{hypervisor} e a memória, onde
+a informação é criptografada utilizando a chave indicada antes de ser salvo na
+DRAM. Ao ser posteriormente carregado da DRAM para o sistema operacional
+novamente, as informações são descriptografadas.
 
-Esse tipo de segurança não previne ataques advindos de um Hypervisor
-comprometido, uma vez que ele possui acesso aos dados de maneira direta, esse
-tipo de segurança tem com o objetivo evitar ataques como probe attack na DRAM,
-instalação de hardware que possa acessar a memória do \textit{Guest}, ataques
-que possam capturar dados de DIMM e NVDIMM\@.
+Este mecanismo de segurança não previne ataques provenientes de um
+\textit{hypervisor} nativo comprometido, uma vez que ele possui acesso aos
+dados de maneira direta, sem criptografia. O objetivo, então, é de evitar
+ataques do tipo \textit{probe attack} na memória, instalação de
+\textit{hardware} que possa acessar a memória do \textit{guest} em texto plano,
+ou ataques que possam capturar dados de DIMM e NVDIMM.
 
-Para utilizar SME, é necessário verificar se o processador possui suporte para
-esse recurso, o que pode ser verificado através da chamada de CPUID
-Fn8000\_001F, e que durante o boot o bit 23 de SYSCFG MSR esteja definido como
-1 para sinalizar que esse recurso está habilitado. Após isso, ao fazer acesso à
-DRAM, é visto o último bit mais significativo do endereço, chamado de C-bit,
-que define se o dado deve ou não ser criptografado.
+Para utilizar o SME, é necessário verificar se o processador possui suporte
+para este recurso, através da chamada de CPUID Fn8000\_001F, e que durante o
+boot, o bit 23 de SYSCFG MSR esteja ativado para sinalizar que esse recurso
+está habilitado. Após a verificação, ao realizar acesso à DRAM, o bit mais
+significativo do endereço, chamado de C-bit, sinaliza se o dado deve ou não ser
+criptografado.
 
 \begin{figure}[h]
     \centering
@@ -141,32 +143,31 @@ que define se o dado deve ou não ser criptografado.
     \caption{Leitura e escrita no SME}\label{sme-read-write}
 \end{figure}
 
-Como visto em~\ref{sme-read-write}, para a leitura, antes do dado passar para
-CPU, duas versões do dado são inseridas como entrada de um mux, um com o dado
-como estava na DRAM e outra com o dado após passar pelo circuito responsável
-pela criptografia. O controle do mux recebe o bit mais significativo do
-endereço, o C-bit, caso seja 1 significa que o dado está criptografado e a CPU
-precisa da informação descriptografada, caso seja 0 significa que o dado pode
-ser passado direto para a CPU\@.
+Como visto na figura~\ref{sme-read-write}, para a leitura da memória, antes do
+dado ser copiado para a CPU, duas versões do dado são inseridas como entrada de
+um multiplexador, uma com o dado literal como estava na DRAM, outra com o dado
+descriptografado, após passar pelo circuito responsável. O controle do
+multiplexador recebe o bit mais significativo do endereço, o C-bit, para
+selecionar entre as entradas caso o dado esteja na região criptografada ou não.
+Para a escrita, a ideia é semelhante e inversa, selecionando entre o dado
+criptografado ou literal.
 
-Para a escrita a lógica é a mesma, caso o C-bit seja 1 o dado deve ser
-criptogrado antes de ser inserido na DRAM, caso seja 0 o dado pode ser salvo
-diretamente.
-
-Ainda existe uma variação chamada Transparent SME, onde tudo é criptografado.
-Nesse caso não é necessário suporte do SO, tendo em vista que não é preciso
-fazer o controle de quais endereços serã criptografados e quais não. O processo
-de acesso à memória ocorre da mesma forma que em SME\@.
+Existe uma variação chamada \textbf{Transparent SME}, onde tudo é
+criptografado. Neste caso, não é necessário suporte do sistema operacional,
+tendo em vista que não é preciso fazer o controle de quais endereços serão
+criptografados e quais não serão. O processo de acesso à memória ocorre da
+mesma forma que no SME.
 
 
 \section{Secure Encrypted Virtualization}
 
-Secure Encrypted Virtualization (SEV) integra o SME com a capacidade de
-comportar várias VMs criptografadas. Durante o boot a máquina \textit{Host} recebe uma
-chave, a qual é utilizada da mesma maneira que em SEV\@. O diferencial do SEV é
-que após a inicialização cada máquina virtual também ganha uma chave única,
-podendo assim criptografar seus dados e protegê-los tanto do hypervisor como de
-outros \textit{Guest}s sendo executados no \textit{Host}.
+\textbf{Secure Encrypted Virtualization} (SEV) integra o SME com a capacidade
+de comportar várias VMs criptografadas. Durante o boot, a máquina \textit{host}
+recebe uma chave, a qual é utilizada da mesma maneira que em SME. O diferencial
+do SEV é que, após a inicialização, cada máquina virtual também ganha uma chave
+única, podendo assim criptografar seus dados e protegê-los, tanto do
+\textit{hypervisor} como de outros \textit{guests} sendo executados no
+\textit{host}.
 
 \begin{figure}[h]
     \centering
