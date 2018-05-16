@@ -5,8 +5,6 @@
 
 __BEGIN_SYS
 
-OStream cout;
-
 class Log_Transducer
 {
 public:
@@ -91,8 +89,6 @@ private:
         Logger& logger = *_logger;
         *logger.log = logger.initial_timestamp;
         *logger.log = logger.final_timestamp;
-        cout << logger.initial_timestamp;
-        cout << logger.final_timestamp;
         for (int i = 0; i < logger.logs_size; i++) {
             *logger.log = logger.logs[i];
         }
