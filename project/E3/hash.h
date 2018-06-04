@@ -1,8 +1,12 @@
 #ifndef IOT_INTEGRITY_HASH_H
 #define IOT_INTEGRITY_HASH_H
 
-#include "sha256.h"
+namespace crypto {
 
+typedef unsigned char byte_t;
+typedef unsigned int word_t;
+
+const size_t SHA256_BLOCK_SIZE = 32;
 
 /****************************** MACROS ******************************/
 #define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
@@ -38,10 +42,6 @@ static const word_t DEFAULT_STATE[8] = {
 	0x5be0cd19,
 };
 
-namespace crypto {
-
-typedef unsigned char byte_t;
-typedef unsigned int word_t;
 
 class Sha256 {
 public:
@@ -53,11 +53,6 @@ public:
 			state[i] = DEFAULT_STATE[i];
 		}
 	}
-
-    template <typename T>
-    void update(const T& data) {
-    	update(reinterpret_cast<const unsigned char*>(&data), sizeof(data));
-    }
 
     void update(const unsigned char* input, size_t length) {
 		for (word_t i = 0; i < length; ++i) {
@@ -97,27 +92,17 @@ public:
 
 		// Append to the padding the total message's length in bits and transform.
 		bit_length += data_length * 8;
-		data[63] = bit_length;
-		data[62] = bit_length >> 8;
-		data[61] = bit_length >> 16;
-		data[60] = bit_length >> 24;
-		data[59] = bit_length >> 32;
-		data[58] = bit_length >> 40;
-		data[57] = bit_length >> 48;
-		data[56] = bit_length >> 56;
+		for (int i = 0; i < 8; ++i) {
+			data[63 - i] = bit_length >> (i*8);
+		}
 		transform();
 
 		// Since this implementation uses little endian byte ordering and SHA uses big endian,
 		// reverse all the bytes when copying the final state to the output hash.
 		for (word_t i = 0; i < 4; ++i) {
-			destiny[i]      = (state[0] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 4]  = (state[1] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 8]  = (state[2] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 12] = (state[3] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 16] = (state[4] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 20] = (state[5] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 24] = (state[6] >> (24 - i * 8)) & 0x000000ff;
-			destiny[i + 28] = (state[7] >> (24 - i * 8)) & 0x000000ff;
+			for (int j = 0; j < 8; ++j) {
+				destiny[i + 4*j] = (state[j] >> (24 - i * 8)) & 0x000000ff;
+			}
 		}
     }
 
