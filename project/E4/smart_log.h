@@ -2,6 +2,7 @@
 #include <alarm.h>
 #include <utility/array.h>
 #include <thread.h>
+#include <semaphore.h>
 
 #include "hash.h"
 
@@ -57,101 +58,88 @@ template<typename T>
 class Logger: public Smart_Data_Common::Observer
 {
 public:
-    Logger(T * t, Smart_Log* log, const byte_t* key):
+    Logger(T * t, Smart_Log* log, const byte_t* key, const int num_logs=3):
+        num_logs(num_logs),
+        key{key},
+        thread_semaphore(0),
         _data(t),
         log(log),
         logs_size(0),
         logs(),
-        thread{0},
-        sending{false},
-        key{key}
+        thread{new Thread(&send_log, this)},
+        sending{false}
     {
         _data->attach(this);
-        //print(_data->db_series());
+        thread->priority(Thread::IDLE);
     }
+
     ~Logger() { _data->detach(this); }
 
     void update(Smart_Data_Common::Observed * obs) {
         if (sending) {
             return;
         }
-        if (logs_size == 0)
+
+        if (logs_size == 0) {
             initial_timestamp = _data->time();
+        }
 
         logs[logs_size] = *_data;
         ++logs_size;
-        if (logs_size == N_LOGS) {
+
+        if (logs_size == num_logs) {
             final_timestamp = _data->time();
-            if (thread)
-                delete thread;
+            // if (thread)
+            //     delete thread;
             sending = true;
-            thread = new Thread(&send_log, this);
-            thread->priority(Thread::IDLE);
+            thread_semaphore.v();
         }
     }
 
 private:
-
-    static void print_as_hex(const char* text, const unsigned char* what, const int len=crypto::SHA256_BLOCK_SIZE) {
-        const char HEX_CHARS[] = {"0123456789abcdef"};
-        cout << text << ": ";
-        for (int i = 0; i < len; ++i) {
-            char c = what[i];
-            cout << HEX_CHARS[(c >> 4) & 0b1111] << HEX_CHARS[c & 0b1111];
-        }
-        cout << '\n';
-    }
-
     static int send_log(Logger* _logger) {
         using crypto::Sha256;
         using crypto::SHA256_BLOCK_SIZE;
 
         Logger& logger = *_logger;
-        *logger.log = logger.initial_timestamp;
-        *logger.log = logger.final_timestamp;
 
-        cout << "hashing...\n";
-        Sha256 hasher = Sha256();
-        for (int i = 0; i < logger.logs_size; i++) {
-            cout << logger.logs[i] << ", ";
+        while (true) {
+            logger.thread_semaphore.p();
+            
+            *logger.log = logger.initial_timestamp;
+            *logger.log = logger.final_timestamp;
 
-            print_as_hex("nha", reinterpret_cast<unsigned char*>(&logger.logs[i]), 64 / 8);
-            hasher.update(reinterpret_cast<unsigned char*>(&logger.logs[i]), 64 / 8);
-        }
-        cout << "\nDone\n";
-
-        byte_t log_hash[SHA256_BLOCK_SIZE];
-        hasher.digest(log_hash);
-        print_as_hex("Hash", log_hash);
-
-        byte_t cryptographed_hash[32];
-        logger.encrypt_hash(log_hash, cryptographed_hash);
-        print_as_hex("cry", reinterpret_cast<unsigned char*>(cryptographed_hash), 32);
-        
-        const int bus_size = 64; // I32 = 32, I64 = 64
-        const int sends = 8 * SHA256_BLOCK_SIZE / bus_size;
-
-        for (int i = 0; i < sends; i++) {
-            long long value = 0;
-
-            const int parts_size = bus_size / 8;
-            for (int j = 0; j < parts_size; ++j) {
-                long long part = cryptographed_hash[i * parts_size + j];
-                value |= part << (j*8);
+            Sha256 hasher = Sha256();
+            for (int i = 0; i < logger.logs_size; i++) {
+                hasher.update(reinterpret_cast<unsigned char*>(&logger.logs[i]), 64 / 8);
             }
-            print_as_hex("val", reinterpret_cast<unsigned char*>(&value), 64 / 8);
 
-            *logger.log = value;
+            byte_t log_hash[SHA256_BLOCK_SIZE];
+            hasher.digest(log_hash);
+
+            byte_t cryptographed_hash[32];
+            logger.encrypt_hash(log_hash, cryptographed_hash);
+            
+            const int bus_size = 64; // I32 = 32, I64 = 64
+            const int sends = 8 * SHA256_BLOCK_SIZE / bus_size;
+
+            for (int i = 0; i < sends; i++) {
+                long long value = 0;
+
+                const int parts_size = bus_size / 8;
+                for (int j = 0; j < parts_size; ++j) {
+                    long long part = cryptographed_hash[i * parts_size + j];
+                    value |= part << (j*8);
+                }
+
+                *logger.log = value;
+            }
+
+            // TODO: separa em métodos
+
+            logger.logs_size = 0;
+            logger.sending = false;
         }
-
-        // TODO: taca o AES na log_hash
-        // TODO: separa em métodos
-        // TODO: envia
-
-        logger.logs_size = 0;
-        logger.sending = false;
-        logger.thread->exit();
-
         return 0;
     }
 
@@ -176,16 +164,17 @@ private:
         }
     }
 
-    static const int N_LOGS = 3;
+    const int num_logs;
+    const byte_t* key;
+    Semaphore thread_semaphore;
     T * _data;
     Smart_Log * log;
     int logs_size;
     Thread * thread;
-    Smart_Log::Value logs[10];
     bool sending;
     long initial_timestamp;
     long final_timestamp;
-    const byte_t* key;
+    Smart_Log::Value logs[10];
 };
 
 __END_SYS
