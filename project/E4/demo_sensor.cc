@@ -4,7 +4,8 @@
 
 using namespace EPOS;
 
-OStream cout;
+OStream acout;
+
 
 class Temperature_Transducer
 {
@@ -26,8 +27,8 @@ public:
     static const unsigned int NUM = TSTP::Unit::I32;
     static const int ERROR = 0; // Unknown
 
-    static const bool INTERRUPT = true;
-    static const bool POLLING = false;
+    static const bool INTERRUPT = false;
+    static const bool POLLING = true;
 
 public:
     // === SmartData interaction ===
@@ -57,9 +58,14 @@ int main()
 {
     cout << "Hello!" << endl;
 
+    const unsigned char key[16] = {0xaa, 0xaa, 0xaa, 0xaa,
+                                   0xaa, 0xaa, 0xaa, 0xaa,
+                                   0xaa, 0xaa, 0xaa, 0xaa,
+                                   0xaa, 0xaa, 0xaa, 0xaa,};
+
     My_Temperature t(0, 15000000, My_Temperature::ADVERTISED);
     Smart_Log log(0, 15000000, Smart_Log::ADVERTISED);
-    Logger<My_Temperature> p0(&t, &log);
+    Logger<My_Temperature> p0(&t, &log, key);
     t = 10;
 
     Random::seed(TSTP::now());

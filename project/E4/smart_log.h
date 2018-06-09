@@ -3,7 +3,13 @@
 #include <utility/array.h>
 #include <thread.h>
 
+#include "hash.h"
+
 __BEGIN_SYS
+
+OStream cout;
+
+typedef unsigned char byte_t;
 
 class Log_Transducer
 {
@@ -25,7 +31,7 @@ public:
     static const unsigned int NUM = TSTP::Unit::I64;
     static const int ERROR = 0; // Unknown
 
-    static const bool INTERRUPT = true;
+    static const bool INTERRUPT = false;
     static const bool POLLING = false;
 
 public:
@@ -51,13 +57,14 @@ template<typename T>
 class Logger: public Smart_Data_Common::Observer
 {
 public:
-    Logger(T * t, Smart_Log* log) :
+    Logger(T * t, Smart_Log* log, const byte_t* key):
         _data(t),
         log(log),
         logs_size(0),
         logs(),
         thread{0},
-        sending{false}
+        sending{false},
+        key{key}
     {
         _data->attach(this);
         //print(_data->db_series());
@@ -84,18 +91,89 @@ public:
     }
 
 private:
+
+    static void print_as_hex(const char* text, const unsigned char* what, const int len=crypto::SHA256_BLOCK_SIZE) {
+        const char HEX_CHARS[] = {"0123456789abcdef"};
+        cout << text << ": ";
+        for (int i = 0; i < len; ++i) {
+            char c = what[i];
+            cout << HEX_CHARS[(c >> 4) & 0b1111] << HEX_CHARS[c & 0b1111];
+        }
+        cout << '\n';
+    }
+
     static int send_log(Logger* _logger) {
+        using crypto::Sha256;
+        using crypto::SHA256_BLOCK_SIZE;
 
         Logger& logger = *_logger;
         *logger.log = logger.initial_timestamp;
         *logger.log = logger.final_timestamp;
+
+        cout << "hashing...\n";
+        Sha256 hasher = Sha256();
         for (int i = 0; i < logger.logs_size; i++) {
-            *logger.log = logger.logs[i];
+            cout << logger.logs[i] << ", ";
+
+            print_as_hex("nha", reinterpret_cast<unsigned char*>(&logger.logs[i]), 64 / 8);
+            hasher.update(reinterpret_cast<unsigned char*>(&logger.logs[i]), 64 / 8);
         }
+        cout << "\nDone\n";
+
+        byte_t log_hash[SHA256_BLOCK_SIZE];
+        hasher.digest(log_hash);
+        print_as_hex("Hash", log_hash);
+
+        byte_t cryptographed_hash[32];
+        logger.encrypt_hash(log_hash, cryptographed_hash);
+        print_as_hex("cry", reinterpret_cast<unsigned char*>(cryptographed_hash), 32);
+        
+        const int bus_size = 64; // I32 = 32, I64 = 64
+        const int sends = 8 * SHA256_BLOCK_SIZE / bus_size;
+
+        for (int i = 0; i < sends; i++) {
+            long long value = 0;
+
+            const int parts_size = bus_size / 8;
+            for (int j = 0; j < parts_size; ++j) {
+                long long part = cryptographed_hash[i * parts_size + j];
+                value |= part << (j*8);
+            }
+            print_as_hex("val", reinterpret_cast<unsigned char*>(&value), 64 / 8);
+
+            *logger.log = value;
+        }
+
+        // TODO: taca o AES na log_hash
+        // TODO: separa em métodos
+        // TODO: envia
+
         logger.logs_size = 0;
         logger.sending = false;
         logger.thread->exit();
+
         return 0;
+    }
+
+    void encrypt_hash(const byte_t *hash, byte_t *output)
+    {
+        AES_Common::AES<16> enigma = AES_Common::AES<16>(AES_Common::ECB);
+        byte_t input_aes1[16];
+        byte_t input_aes2[16];
+        for (int i = 0; i < 16; i++) {
+            input_aes1[i] = hash[i];
+            input_aes2[i] = hash[i+16];
+        }
+
+        byte_t output_aes1[16];
+        byte_t output_aes2[16];
+        enigma.encrypt(input_aes1, key, output_aes1);
+        enigma.encrypt(input_aes2, key, output_aes2);
+
+        for (int i = 0; i < 16; i++) {
+            output[i] = output_aes1[i];
+            output[i+16] = output_aes2[i];
+        }
     }
 
     static const int N_LOGS = 3;
@@ -105,8 +183,9 @@ private:
     Thread * thread;
     Smart_Log::Value logs[10];
     bool sending;
-    long int initial_timestamp;
-    long int final_timestamp;
+    long initial_timestamp;
+    long final_timestamp;
+    const byte_t* key;
 };
 
 __END_SYS

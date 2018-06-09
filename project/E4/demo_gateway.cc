@@ -34,6 +34,7 @@ int main()
     // Interest center points
     TSTP::Coordinates center(300, 300, 0);
 
+    const TSTP::Time DATA_PERIOD = 5 * 1000000;
     const TSTP::Time DATA_EXPIRY = 10* 1000000;
     const TSTP::Time INTEREST_EXPIRY = 2ull * 60 * 60 * 1000000;
 
@@ -43,7 +44,7 @@ int main()
     TSTP::Region region(center, 50 * 100, start, end);
 
     // Data of interest
-    Temperature data_temperature(region, DATA_EXPIRY, 0);
+    Temperature data_temperature(region, DATA_EXPIRY, DATA_PERIOD);
     Smart_Log log(region, DATA_EXPIRY);
 
     // Event-driven actuators
